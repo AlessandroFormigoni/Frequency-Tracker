@@ -11,20 +11,23 @@ yMeasl = zeros(1,nsampl);
 yMeasr = zeros(1,nsampl);
 s = zeros(1,nsampl-1);
 e = zeros(1,nsampl-1);
+
+%Inizializzazione 
 omega = 67*(2*pi);
 t = 0:dt:(dt*nsampl);
 xl(:,1) = [0 0 omega];
 Pl(:,:,1) = eye(3);
 % xr(:,1) = [0 0 omega];
 % Pr(:,:,1) = eye(3);
-r = 0.011; lambda = 800; w = 7e-4;
+
+r = 0.011; q = 800; w = 7e-4;       %Parametri regolabili
 %vl = 4*pinknoise(nsampl);
 vr = wgn(1,nsampl,10*log10(r));
 for k = 1:nsampl-1
 yMeasl(k) = y(k,1) + 0*vr(k);
 % yMeasr(k) = y(k,2) + vr(k);
-[xl(:,k+1),xl(:,k), Pl(:,:,k+1),~,s(k),e(k)] = freq_track(dt,yMeasl(k),xl(:,k),Pl(:,:,k),r,lambda,w);
-% [xr(:,k+1),xr(:,k), Pr(:,:,k+1)] = freq_track(dt,yMeasr(k),xr(:,k),Pr(:,:,k),r,lambda);
+[xl(:,k+1),xl(:,k), Pl(:,:,k+1),~,s(k),e(k)] = freq_track(dt,yMeasl(k),xl(:,k),Pl(:,:,k),r,q,w);
+% [xr(:,k+1),xr(:,k), Pr(:,:,k+1)] = freq_track(dt,yMeasr(k),xr(:,k),Pr(:,:,k),r,q);
 end
 
 figure(1)
