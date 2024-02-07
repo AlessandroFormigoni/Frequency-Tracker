@@ -1,0 +1,134 @@
+clear
+clc
+% nmsefreq = zeros(1,1000);
+% nmsesig = zeros(1,1000);
+%  passed = 0;
+
+% 
+%   for i=1:1000
+%      cj = 1;
+%      for j = 0.01:0.05:2
+%              co = 1;
+%         for o=0.1:0.05:2
+    dt = 1/(100);
+    t = 0:dt:8;
+    omega = 2*pi*1;
+    scale_factor = 3;
+    y = (t>=0 & t<=8).*(exp(-0.5*t)).*sin(omega*t) + (t>8 & t<=16).*(sin(scale_factor*omega*t)) + (t>16).*(sin(omega*t));
+    %y = sin(omega*t);
+    samples = length(y);
+    x = zeros(3, samples);
+    P = zeros(3, 3, samples);
+    z = @(x) x(1)*sin(x(3));
+    H = @(x) [sin(x(3)), 0, x(1)*cos(x(3))];
+    F = [1 0 0; 0 1 0; 0 dt 1];
+    yMeas = zeros(1, samples);
+    est = zeros(1, samples);
+    freq = zeros(1, samples);
+    e_t = zeros(1, samples);
+    s = zeros(1, samples);
+    err = 0.4*rand() - 0.2; 
+    realFreq = (t>=0 & t<=8).*((omega)*ones(1, samples)) + (t>8 & t<=16).*((scale_factor*omega)*ones(1, samples)) + (t>16).*((omega)*ones(1, samples));
+    %realFreq = ((omega)*ones(1, samples));
+    
+    %~
+    
+    %Varianze dei rumori
+    q = 0.05;
+    r = 0.1 ;
+    a = 0.05;
+    I = [dt*a 0 0; 0 dt*q (dt)^2*q/2;0 (dt)*q^2/2 (dt)^3*q/3];
+    v = wgn(1,samples,10*log10(r));
+    
+    %Stato iniziale
+    x(:,1) = [1; omega-err*omega; 0];
+    
+    %Matrice di covarianza
+    P(:,:,1) = eye(3);
+    
+    
+    
+    for k = 1:samples
+        %x(t|t-1)
+        xhat_t = x(:,k);
+       
+        %Misura
+        yMeas(k) = y(k) + v(k);
+    
+        %errore
+        e_t(k) = yMeas(k) - z(xhat_t);
+    
+        %Guadagno del filtro
+        s(k) = H(xhat_t)*P(:,:,k)*H(xhat_t)' + r;
+        Kt = P(:,:,k)*H(xhat_t)'.*inv(s(k));
+    
+        %Correzione
+        x(:,k) = xhat_t + Kt.*e_t(k);
+    
+        %Measurement update
+        P(:,:,k) = ((eye(3) - Kt*H(xhat_t))*P(:,:,k));
+        
+        %Predizione
+        L = chol(F*P(:,:,k)*F'+I);
+        P(:,:,k+1)= L'*L;
+        x(:,k+1) = F*(x(:,k));
+    
+        est(k) = x(1,k)*sin(x(3,k));
+        freq(k) = x(2,k);
+    
+    end
+
+    freq = freq/(2*pi);
+    realFreq = realFreq./(2*pi);
+    subplot(2,1,1)
+    plot(t,y,'--',t,yMeas);
+    hold on
+    plot(t,est,'k','LineWidth',2);
+    legend('y','y misurata','y stimata');
+    grid on
+    subplot(2,1,2)
+    plot(t,realFreq,'--',t,freq);
+    xlabel('t')
+    ylabel('Hz')
+    legend('frequenza reale', 'frequenza stimata');
+    grid on
+
+    %Test std e chi^2
+    figure(2)
+    plot(e);
+    xlabel('campioni')
+    hold on
+    grid on
+    plot(2.*sqrt(s),'r')
+    plot(-2.*sqrt(s),'r')
+    ninf = sum(e<-2.*sqrt(s));
+    sinf = sum(e>2.*sqrt(s));
+    sprintf('Il %f ha passato il test std', (1-(ninf+sinf)/nsampl)*100)
+
+    E = e_t.*s.^(-1).*e_t;
+     mE = samples*mean(E);
+     r1 = chi2inv(0.025, samples);
+     r2 = chi2inv(1-0.025, samples);
+
+    if mE <= r2 && mE >= r1
+        sprintf('Il filtro ha passato il test chiquadro')
+        passed = passed + 1;
+    else
+        sprintf('Il filtro non ha passato il test chiquadro')
+    end
+
+%     nmsefreq(i) = mean((realFreq-freq).^2)/mean(realFreq.^2);
+%     nmsesig(i) = mean((y-est).^2)/(mean(y.^2));
+%     co = co + 1;
+    sprintf('Errore quadratico medio della stima della frequenza: %f', mean((realFreq-freq).^2)/mean(realFreq.^2))
+    sprintf('Errore quadratico medio della stima del segnale: %f', mean((y-est).^2)/(mean(y.^2)))
+%          end
+%          cj = cj + 1;
+%      end
+%  end
+% 
+% a = mean(nmsefreq);
+% b = std(nmsefreq);
+% c = mean(nmsesig);
+% d = std(nmsesig);
+% sprintf("done")
